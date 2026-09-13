@@ -80,7 +80,7 @@ Chatify/
 Clone the repository:
 
 ```bash
-git clone https://github.com/saurabh374/Chatify.git
+git clone https://github.com/iamsaurabhp/Chatify.git
 cd Chatify
 ```
 
@@ -161,5 +161,5 @@ instance.
 
 ## Author
 
-[Saurabh Patil](https://saurabh374.github.io/) ·
+[Saurabh Patil](https://iamsaurabhp.github.io/) ·
 [LinkedIn](https://linkedin.com/in/iamsaurabhp/)
