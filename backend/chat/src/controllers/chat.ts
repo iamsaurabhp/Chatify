@@ -53,7 +53,9 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
 
   const chatWithUserData = await Promise.all(
     chats.map(async (chat) => {
-      const otherUserId = chat.users.find((id) => id !== userId);
+      const otherUserId = chat.users.find(
+        (id) => id.toString() !== userId.toString()
+      );
 
       const unseenCount = await Messages.countDocuments({
         chatId: chat._id,
@@ -252,7 +254,7 @@ export const getMessagesByChat = TryCatch(
     }
 
     const isUserInChat = chat.users.some(
-      (userId) => userId.toString() === userId.toString()
+      (participantId) => participantId.toString() === userId.toString()
     );
 
     if (!isUserInChat) {
@@ -282,7 +284,9 @@ export const getMessagesByChat = TryCatch(
 
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
 
-    const otherUserId = chat.users.find((id) => id !== userId);
+    const otherUserId = chat.users.find(
+      (id) => id.toString() !== userId.toString()
+    );
 
     try {
       const { data } = await axios.get(

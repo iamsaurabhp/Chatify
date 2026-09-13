@@ -1,201 +1,165 @@
+# Chatify
 
-# Chatify - MERN Chat Application with RabbitMQ & Microservices
+Chatify is a real-time messaging application built as three Node.js services and
+a Next.js frontend. The project demonstrates service boundaries, asynchronous
+email delivery, short-lived OTP authentication, persistent conversations, live
+presence, typing indicators, read status, and image messages.
 
-A scalable, production-ready real-time chat application built using the MERN stack with microservices architecture, RabbitMQ for asynchronous communication, Redis caching, and Socket.IO for real-time messaging.
+## What it demonstrates
 
-***
-
-## Table of Contents
-
-- Project Overview  
-- Features  
-- Architecture  
-- Tech Stack  
-- Setup Instructions  
-  - Prerequisites  
-  - Clone Repository  
-  - Backend Setup  
-  - Frontend Setup  
-  - Docker Setup  
-- Environment Variables  
-- Running the Application  
-- Testing  
-- Deployment  
-- Security  
-- Contributing  
-- License  
-- Contact  
-
-***
-
-## Project Overview
-
-This chat app uses three backend microservices:  
-- **User Service**: Manages authentication and user profiles  
-- **Mail Service**: Handles OTP-based email authentication asynchronously using RabbitMQ  
-- **Chat Service**: Manages chat rooms, messages, and real-time communication  
-
-RabbitMQ coordinates asynchronous tasks between services. Redis is used for caching, OTP storage, and real-time presence tracking. Real-time messaging and events use Socket.IO. The frontend is built with Next.js providing server-side rendering and API routes where needed.
-
-***
-
-## Features
-
-- Real-time chat and presence with Socket.IO  
-- OTP-based user authentication (email verification)  
-- Asynchronous service communication with RabbitMQ  
-- Redis caching to improve performance and manage OTPs  
-- Message delivery status (seen/unseen) and typing indicators  
-- Image uploads with optional captions  
-- Modular microservice architecture for scalability  
-
-***
+- Passwordless email sign-in with a six-digit OTP
+- Five-minute OTP expiry and one-minute request throttling in Redis
+- Asynchronous OTP email delivery through RabbitMQ
+- Real-time messages, presence, typing events, and read receipts with Socket.IO
+- Conversation and message persistence in MongoDB
+- Image upload and delivery through Cloudinary
+- JWT-based access to user and chat APIs
+- Independent user, mail, chat, and frontend processes
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    Browser[Next.js frontend]
+    User[User service]
+    Mail[Mail service]
+    Chat[Chat service + Socket.IO]
+    Redis[(Redis)]
+    UserDB[(MongoDB users)]
+    ChatDB[(MongoDB chats)]
+    Queue[(RabbitMQ)]
+    SMTP[SMTP]
+    Media[Cloudinary]
+
+    Browser -->|OTP and profile API| User
+    Browser -->|chat API and events| Chat
+    User --> Redis
+    User --> UserDB
+    User -->|send-otp event| Queue
+    Queue --> Mail
+    Mail --> SMTP
+    Chat --> ChatDB
+    Chat -->|user lookup| User
+    Chat --> Media
 ```
-[Next.js Frontend] <---> [API Gateway / Load Balancer] <---> [Backend Microservices]
-                           |                            |--> User Service
-                           |                            |--> Mail Service
-                           |                            |--> Chat Service
-                           |
-                      [RabbitMQ Message Broker]
-                           |
-                      [Redis Cache]
-                           |
-                      [MongoDB Atlas]
+
+## Repository structure
+
+```text
+Chatify/
+├── frontend/       Next.js user interface
+└── backend/
+    ├── user/       OTP authentication, profiles, Redis, RabbitMQ producer
+    ├── mail/       RabbitMQ consumer and SMTP email delivery
+    └── chat/       Conversations, messages, Socket.IO, Cloudinary
 ```
 
-***
+## Technology
 
-## Tech Stack
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
+| Services | Node.js, Express 5, TypeScript |
+| Data | MongoDB, Mongoose, Redis |
+| Messaging | RabbitMQ |
+| Real time | Socket.IO |
+| Media | Multer, Cloudinary |
+| Authentication | Email OTP, JWT |
 
-| Layer           | Technology                       |
-|-----------------|--------------------------------|
-| Frontend        | Next.js                        |
-| Backend         | Node.js, Express.js            |
-| Database        | MongoDB (Atlas)                |
-| Message Broker  | RabbitMQ                      |
-| Caching / PubSub| Redis                        |
-| Real-Time Comm  | Socket.IO                     |
-| Containerization| Docker                        |
-
-***
-
-## Setup Instructions
+## Local setup
 
 ### Prerequisites
 
-- Node.js >= 16.x  
-- npm >= 8.x  
-- Docker (for RabbitMQ and Redis)  
-- MongoDB Atlas account  
+- Node.js 20 LTS
+- MongoDB
+- Redis
+- RabbitMQ
+- SMTP credentials for sending OTP email
+- A Cloudinary account for image messages
 
-### Clone Repository
-
-```bash
-git clone https://github.com/your-repo/mern-chat-app.git
-cd mern-chat-app
-```
-
-### Backend Setup
-
-Navigate to each microservice folder under `/backend` (user-service, mail-service, chat-service) and:
+Clone the repository:
 
 ```bash
-npm install
-npm run build
+git clone https://github.com/saurabh374/Chatify.git
+cd Chatify
 ```
 
-Set up environment variables as described below.
-
-### Frontend Setup
-
-In the frontend folder:
+Install each application:
 
 ```bash
-npm install
-npm run dev
+cd backend/user && npm install
+cd ../mail && npm install
+cd ../chat && npm install
+cd ../../frontend && npm install
 ```
 
-***
-
-### Docker Setup
-
-Run RabbitMQ and Redis containers locally:
+Copy each example environment file and replace its placeholder values:
 
 ```bash
-docker run -d --hostname rabbitmq --name rabbitmq-container -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=admin123 -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-docker run -d --name redis-container -p 6379:6379 redis
+cp backend/user/.env.example backend/user/.env
+cp backend/mail/.env.example backend/mail/.env
+cp backend/chat/.env.example backend/chat/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
-***
-
-## Environment Variables
-
-Create `.env` files in backend microservices with:
-
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=admin
-RABBITMQ_PASSWORD=admin123
-
-REDIS_URL=redis://localhost:6379
-
-JWT_SECRET=your_jwt_secret
-
-EMAIL_SERVICE_API_KEY=your_email_service_api_key
-```
-
-Frontend environment variables should include backend service URLs if needed.
-
-***
-
-## Running the Application
-
-- Run each backend microservice:
+Start MongoDB, Redis, and RabbitMQ. For a local Docker-based Redis and RabbitMQ
+setup:
 
 ```bash
-npm run dev
+docker run -d --name chatify-redis -p 6379:6379 redis:7-alpine
+docker run -d --name chatify-rabbitmq -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest \
+  -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:3-management
 ```
 
-- Start the Next.js frontend:
+Run the four processes in separate terminals:
 
 ```bash
-npm run dev
+cd backend/user && npm run dev
+cd backend/mail && npm run dev
+cd backend/chat && npm run dev
+cd frontend && npm run dev
 ```
 
-- Access RabbitMQ Management UI at [http://localhost:15672](http://localhost:15672)  
-- Redis runs on port 6379 by default  
+The default local endpoints are:
 
-***
+| Application | URL |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| User service | http://localhost:5000 |
+| Mail service | http://localhost:5001 |
+| Chat service | http://localhost:5002 |
+| RabbitMQ management | http://localhost:15672 |
 
-## Testing
+## Environment variables
 
-- Use Postman or similar to test APIs  
-- Use the frontend UI to verify chat, authentication, and real-time features  
-- Monitor RabbitMQ queues and Redis for cache/OTP verification  
+The checked-in `.env.example` files document every required variable. Keep real
+credentials in local `.env` files and never commit them.
 
-***
+The user and chat services must use the same `JWT_SECRET`. The chat service also
+needs `USER_SERVICE` so it can resolve participant profiles. The frontend
+service URLs can be changed with `NEXT_PUBLIC_USER_SERVICE` and
+`NEXT_PUBLIC_CHAT_SERVICE`.
 
-## Deployment
+## Build checks
 
-- Backend microservices can be containerized with Docker and deployed on any server or container orchestration platform  
-- Frontend can be deployed on platforms supporting Next.js such as Vercel or any Node.js-compatible host  
-- MongoDB Atlas and Redis instances should be properly configured in production  
+```bash
+cd backend/user && npm run build
+cd backend/mail && npm run build
+cd backend/chat && npm run build
+cd frontend && npm run build
+```
 
-***
+## Production considerations
 
-## Security
+This repository is a portfolio project rather than a turnkey hosted service.
+Before production use, restrict CORS origins, use TLS for external connections,
+store secrets in a managed secret store, add automated API and browser tests,
+and use a shared Socket.IO adapter when running more than one chat-service
+instance.
 
-- JWT tokens for secure API access  
-- OTP tokens stored in Redis with expiry  
-- RabbitMQ secured with authentication and optional SSL  
-- HTTPS enforced on frontend and backend endpoints  
-- Input validation and sanitization applied  
+## Author
 
-***
+[Saurabh Patil](https://saurabh374.github.io/) ·
+[LinkedIn](https://linkedin.com/in/iamsaurabhp/)
